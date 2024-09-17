@@ -1,0 +1,54 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.datasets._california_housing import fetch_california_housing
+from sklearn import tree
+import graphviz
+housing = fetch_california_housing()
+# print(housing.DESCR)
+print(housing.data.shape)
+print(housing.data[0])
+
+dtr=tree.DecisionTreeRegressor(max_depth=2)#初始化树模型 max_depth=None,
+'''     
+        criterion="squared_error",
+        splitter="best",            默认是best（遍历所有的特征寻找切分点） random只用在数据量巨大巨大的时候
+        max_depth=None（常用）,      最大深度，
+        min_samples_split=2（常用）, 如果某个叶节点样本数小于这个数，就不再分裂
+        min_samples_leaf=1,         
+        min_weight_fraction_leaf=0.0, 叶子结点的权重
+        max_features=None,          默认，基本不改
+        random_state=None,
+        max_leaf_nodes=None,        最大叶子节点个数
+        min_impurity_decrease=0.0,  设置叶子结点的分裂阈值，小于该阈值就不分裂
+        ccp_alpha=0.0,
+        monotonic_cst=None
+'''
+dtr.fit(housing.data[:,[6,7]],housing.target)       #x,y，数据和结果值
+#决策树可视化显示   需要安装graphviz
+dot_data=tree.export_graphviz(dtr,out_file=None,
+                     feature_names=housing.feature_names[6:8],
+                     filled=True,
+                     rounded=True,
+                     impurity=True,)
+graph=graphviz.Source(dot_data)
+graph.render('tree.dot')
+import pydotplus
+graph = pydotplus.graph_from_dot_file('tree.dot')
+graph.get_nodes()[7].set_fillcolor('#FFF2DD')
+from IPython.display import Image
+Image(graph.create_png())
+# graph.write_png('tree.png')
+from sklearn.model_selection import train_test_split
+data_train, data_test, target_train, target_test = train_test_split(housing.data,housing.target,test_size=0.1,random_state=0)
+dtr=tree.DecisionTreeRegressor(random_state=0)
+dtr.fit(data_train,target_train)
+print(dtr.score(data_test,target_test))
+
+'''
+from sklearn.model_selection import GridSeachCV     #自动遍历for循环寻找最佳参数
+tree_param_grid={'min_samples_split':list((3,6,9)),'n_estimators':list((10,50,100)),'criterion':['gini','entropy']}
+                    #最少有3,6,9个叶子节点
+#   gird=GridSeachCV(算法,参数候选项{字典形式}:param_grid=tree_param_grid,(交叉验证):cv=5)
+grid.fit(data_train,target_train)
+print(grid.grid_scores_,grid.best_params_,grid.best_score_)
+
