@@ -1,0 +1,79 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
+import seaborn as sns; sns.set()
+from sklearn.datasets import make_blobs
+def plot_svc(model,X, y):
+    """
+    绘制SVC模型的图像。
+    参数：
+        X: 二维数组，形状为(n_samples, n_features)，表示输入数据。
+        y: 一维数组，形状为(n_samples,)，表示目标值。
+    """
+    # 获取支持向量
+    support_vectors = model.support_vectors_
+    # 绘制散点图
+    plt.scatter(X[:, 0], X[:, 1], c=y, cmap='viridis')
+    # 绘制支持向量
+    plt.scatter(support_vectors[:, 0], support_vectors[:, 1], s=100, facecolors='none', edgecolors='k')
+    # 绘制决策边界
+    ax = plt.gca()
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+
+    xx = np.linspace(xlim[0], xlim[1], 30)
+    yy = np.linspace(ylim[0], ylim[1], 30)
+    YY, XX = np.meshgrid(yy, xx)
+    xy = np.vstack([XX.ravel(), YY.ravel()]).T
+    Z = model.decision_function(xy).reshape(XX.shape)
+
+    ax.contour(XX, YY, Z, colors='k', levels=[-1, 0, 1], alpha=0.5, linestyles=['--', '-', '--'])
+    ax.scatter(model.support_vectors_[:, 0], model.support_vectors_[:, 1], s=100, facecolors='none', edgecolors='k')
+
+    plt.show()
+
+##调节SVM  Soft Margin 问题
+'''
+kernel是指核函数。
+调节C参数
+    当C趋近于无穷大时:意味着分类严枕不能有错误.
+    当C趋近于很小的时:意味着可以有更大的错误容忍
+gamma :模型的复杂程度，gamma越大，模型越复杂
+'''
+
+# X,y=make_blobs(n_samples=210,centers=2,random_state=0,cluster_std=0.6)
+X, y = make_blobs(n_samples=[20,40], centers=[[2, 3], [3, 2]], random_state=0, cluster_std=0.3)
+###训练一个基本的SVM###
+from sklearn.svm import SVC
+model=SVC(kernel='linear',gamma=0.1,C=100)
+model.fit(X,y)
+plot_svc(model,X,y)
+
+
+####引入核函数的SVM###
+from sklearn.datasets import make_circles
+X, y = make_circles(n_samples=100,factor=0.1, noise=0.1, random_state=0)
+clf=SVC(kernel='linear',gamma=0.1,C=100).fit(X,y)
+plt.scatter(X[:,0],X[:,1],c=y,s=50,cmap='viridis')
+# plt.rcParams['font.sans-serif'] = ['SimHei']
+# plt.xlabel('引入核函数')
+plt.show()
+#引入新的纬度
+from mpl_toolkits import mplot3d
+r=np.exp(-(X**2).sum(1))
+def plot_3D(elev=30, az=30,X=X,y=y):
+    ax=plt.subplot(projection='3d')
+    ax.scatter3D(X[:,0],X[:,1],r,c=y,s=50,cmap='autumn')
+    ax.view_init(elev,az)
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('r')
+    plt.show()
+plot_3D(45,45,X,y)      #水平旋转度数，垂直旋转度数
+
+
+#加入径向基函数
+clf_rbf=SVC(kernel='rbf',gamma=0.1,C=1E6)
+clf_rbf.fit(X,y)
+plot_svc(clf_rbf,X,y)
+
