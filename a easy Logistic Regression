@@ -1,0 +1,137 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import os
+from scipy.sparse import csr_matrix
+import numpy.random
+import time
+pd_data = pd.read_csv('score.csv',header=None,names=['Exam1','Exam2','Admitted'],encoding='utf-8',delimiter=';')
+# print(pd_data)
+# print(pd_data.dtypes)
+# postive=pd_data[pd_data['Admitted']=='1']
+# negative=pd_data[pd_data['Admitted']=='0']
+# print(postive)
+# print(negative)
+# fig=plt.figure(figsize=(10,5))
+# plt.scatter(postive['Exam1'],postive['Exam2'],c='blue',label='postive',marker='o')
+# plt.scatter(negative['Exam1'],negative['Exam2'],c='red',label='negative',marker='x')
+# plt.legend(loc='upper left')
+# plt.xlabel('Exam1')
+# plt.ylabel('Exam2')
+# plt.show()
+
+def sigmod(z):
+    return 1/(1+np.exp(-z))
+def model(X,theta):             #预测函数
+    return sigmod(np.dot(X,theta.T))
+def cost(X,y,theta):            #定义损失函数
+    left=np.multiply(-y,np.log(model(X,theta)))
+    right=np.multiply((1-y),np.log(1-model(X,theta)))
+    return np.sum(left-right)/len(X)
+def gradient(X,y,theta):            #计算梯度
+    grad=np.zeros(theta.shape)
+    error=(model(X,theta)-y)        #.ravel()   .ravel()是NumPy库函数，将多维数组转换为一维数组
+    for j in range(len(theta)):
+        term=np.multiply(error,X[:,j])
+        grad[:,j]=np.sum(term)/len(X)
+    return grad
+pd_data.insert(0,'ones',1)
+# pd_date=csr_matrix(pd_data)
+pd_data.to_numpy()
+pd_data=np.delete(pd_data,0,axis=0)
+col=pd_data.shape[1]    #int
+cow=pd_data.shape[0]-1
+print(pd_data)
+# X=pd_data.iloc[1:,:col-1].to_numpy()       #dataframe中含有字符串类型是会转换为numpy中的字符串，使用astype转换类型
+# X=X.astype('float64')
+# y=pd_data.iloc[1:,col-1:col].to_numpy()
+# y=y.astype('float64')
+X=pd_data[:,0:col-1]
+X=X.astype('float64')
+y=pd_data[:,col-1:col]
+y=y.astype('float64')
+theta=np.zeros((1,col-1))
+print(X)
+print(y)
+print(theta)
+print(type(X),type(y),type(theta))
+#
+# print(X.shape,y.shape,theta.shape)
+# print(cost(X,y,theta))
+STOP_ITER=0
+STOP_COST=1
+STOP_GRAD=2
+def stopCriterion(type,value,threshold):
+    #设置三种停止策略
+    if type==STOP_ITER:
+        return value > threshold
+    elif type==STOP_COST:
+        return abs(value[-1]-value[-2])<threshold
+    elif type==STOP_GRAD:
+        return np.linalg.norm(value)<threshold
+'''linalg.norm 是 NumPy 库中的一个函数，用于计算矩阵或向量的范数（norm）。
+范数是一种衡量向量或矩阵大小的度量方法。在数学中，范数通常表示为一个向量或矩阵与自身的点积的平方根。'''
+
+def shuffleData(data):
+    np.random.shuffle(data[1:,:])             #打乱数据，使模型更加泛化
+    cols=data.shape[1]
+    X=data[0:,0:cols-1]
+    X=X.astype('float64')
+    y=data[0:,cols-1:cols]
+    y=y.astype('float64')
+    return X,y
+
+def descent(data,theta,batchSize,stopType,thresh,alpha):   #数据，参数，参考样本量，停止策略，策略对应阈值，学习率
+    #梯度下降求解
+    init_time=time.time()   #初始化时间
+    i=0     #迭代次数
+    k=0     #batch
+    X,y=shuffleData(data)   #打乱数据
+    grad=np.zeros(theta.shape) #梯度占位初始化
+    costs=[cost(X,y,theta)]     #计算损失值,生成一个列表，方便画图
+
+    while True:
+        grad=gradient(X[k:k+batchSize],y[k:k+batchSize],theta)
+        k+=batchSize        #取batchSize数量个数据
+        if k>=n:          #当k大于数据样本数目时置为0
+            k=0
+            X,y=shuffleData(data)   #重新洗牌
+        theta=theta-alpha*grad      #参数的更新
+        costs.append(cost(X,y,theta))#计算新的损失
+        i+=1
+        value=None
+        if stopType==STOP_ITER:
+            value=i     #   i为迭代次数
+        elif stopType==STOP_COST:
+            value=costs
+        elif stopType==STOP_GRAD:
+            value=grad
+        if stopCriterion(stopType,value,thresh):
+            break
+    return theta,i-1,costs,grad,time.time()-init_time       #参数theta， 迭代次数，损失值，梯度，计算时间
+def runExpe(data,theta,batchSize,stopType,thresh,alpha):
+    theta,iter,costs,grad,durtime=descent(data,theta,batchSize,stopType,thresh,alpha)
+    print(durtime,iter)
+    plt.plot(costs,label=stopType)
+    plt.legend(loc='upper right')
+    plt.show()
+n=cow       #全迭代
+runExpe(pd_data,theta,batchSize=n,stopType=STOP_ITER,thresh=10000,alpha=0.000001)   #全迭代
+# runExpe(pd_data,theta,1,STOP_COST,thresh=0.000001,alpha=0.0001)                   #单个迭代
+pass
+pass
+#设定阈值查看精度,
+def predict(X,theta):
+    return [1 if x>=0.5 else 0 for x in model(X,theta)]
+scaled_X=pd_data[:,0:3].astype('float64')
+print(scaled_X)
+
+predictions=predict(scaled_X,theta)
+
+correct=[1 if ((a==1 and b==1) or (a==0 and b==0)) else 0 for (a,b) in zip(predictions,pd_data[:,3].astype('float64'))]
+accuracy=sum(map(int,correct))/len(predictions)
+print(np.round(theta,20))
+print(model(X, theta))
+print(predictions)
+print(correct)
+print(accuracy)
