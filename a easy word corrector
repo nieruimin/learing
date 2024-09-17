@@ -1,0 +1,45 @@
+pass
+'''
+P(C|W)=P(C)*P(W|C)/P(W)
+'''
+####贝叶斯算法实现拼写检查器####
+
+import collections
+import re
+def words(text):     #1-提取文本库所有词转为小写,只提取a-z，排除特殊字符
+    return re.findall('[a-z]+', text.lower())
+def train(features):
+    model=collections.defaultdict(lambda:1)     #所有词默认最开始出现1次
+    '''要是遇到我们从来没有过见过的新词怎么办.假如说一个词拼写完全正确,但是语料库中没有包含这个词,从而这个词也永远不会出现在训练集中.
+    于是,我们就要返回出现这个词的概率是0.这个情况不太妙,因为概率为0这个代表了这个事件绝对不可能发生,而在我们的概率模型中,我们期望用一个很小
+    的概率来代表这种情况. lambda: 1'''
+    for f in features:
+        model[f]+=1
+    return model
+NWORDS=train(words(open('hamlet.txt',encoding='utf-8').read()))#完成词库创建，由此可以得到先验概率P(C)
+# 使用 sorted 函数和 lambda 表达式按值排序
+sorted_NWORDS = sorted(NWORDS.items(), key=lambda x: x[1],reverse=True)###  可迭代对象  key法则  降序  返回list形式
+# print(sorted_NWORDS)
+
+'''编辑距离:两个词之间的编辑距离定义为使用了几次插入(在词中插入一个单字母),删除(剔除一个单字母),交换(交换相邻两个字母),
+替换(把一个字母换成另一个)的操作从一个词变到另一个词.'''
+
+#返回所有与单词w编辑距离为1的集合
+alphabet='abcdefghijklmnopqrstuvwxyz'
+def edits1(word):
+    n=len(word)
+    return set([word[0:i]+word[i+1:] for i in range(n)]+                       #deletion
+               [word[0:i]+word[i+1]+word[i+2:] for i in range(n-1)]+           #transpositon
+               [word[0:i]+c+word[i+1:] for i in range(n) for c in alphabet]+    #alternation
+               [word[0:i]+c+word[i:] for i in range(n+1) for c in alphabet])    #insertion
+
+#返回所有与单词w编辑距离为2的集合、
+def edits2(word):
+    return set(e2 for e1 in edits1(word) for e2 in edits1(e1))                  #
+def konwn(words):
+    return set(w for w in words if w in NWORDS)
+def correct(word):
+    candidates=konwn([word]) or konwn(edits1(word)) or konwn(edits2(word)) or [word]    #设定优先级 编辑距离小的优先
+    print(candidates)
+    return max(candidates, key=lambda w:NWORDS[w])      #max(可迭代对象 法则)
+print(correct('thay'))
