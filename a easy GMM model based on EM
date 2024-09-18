@@ -1,0 +1,35 @@
+pass
+'''
+EM算法流程
+初始化分布参数θ
+E-step∶根据参数θ计算每个样本属于zi的概率(也就是我们的Q)
+M-Step:根据Q，求出含有O的似然函数的下界并最大化它，得到新的参数θ不断的迭代更新下去
+***********************************************************************
+GMM（高斯混合模型)
+数据可以看作是从数个Gaussian Distribution中生成出来的
+GMM由K个Gaussian分布组成，每个Gaussian称为一个“Component"
+类似k-means方法，求解方式跟EM一样
+不断的迭代更新下去
+'''
+from sklearn.datasets import make_blobs
+from matplotlib import pyplot as plt
+X,y_ture=make_blobs(n_samples=800,centers=4,random_state=11)
+plt.scatter(X[:,0],X[:,1],c=y_ture)
+plt.show()
+#使用K-means实现聚类
+from sklearn.cluster import KMeans
+km=KMeans(n_clusters=4)
+km.fit(X)
+y_pred = km.predict(X)
+plt.scatter(X[:,0],X[:,1],c=y_pred)
+centers=km.cluster_centers_
+plt.title('KMeans')
+plt.show()
+#使用GMM实现聚类
+from sklearn.mixture import GaussianMixture
+gmm=GaussianMixture(n_components=4, covariance_type='full')
+gmm.fit(X)
+labels=gmm.predict(X)
+plt.scatter(X[:,0],X[:,1],c=labels)
+plt.title('Gaussian Mixture')
+plt.show()
