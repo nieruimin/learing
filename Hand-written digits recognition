@@ -1,0 +1,94 @@
+import torch
+import time
+from torch import nn
+from torch.nn import functional as F
+from torch import optim
+
+import torchvision
+from matplotlib import pyplot as plt
+#step 1 load data
+batch_size = 512
+train_loader=torch.utils.data.DataLoader(
+    torchvision.datasets.MNIST('../minist_data', train=True, download=True,
+                               transform=torchvision.transforms.Compose([
+                                   torchvision.transforms.ToTensor(),
+                                   torchvision.transforms.Normalize((0.1307,), (0.3081,))
+                               ])),batch_size=batch_size,shuffle=True)
+test_loader=torch.utils.data.DataLoader(
+    torchvision.datasets.MNIST('../misist_data/', train=False, download=True,
+                               transform=torchvision.transforms.Compose([
+                                    torchvision.transforms.ToTensor(),
+                                    torchvision.transforms.Normalize((0.1307,), (0.3081,))
+                                ])),batch_size=batch_size,shuffle=True
+)
+# for i, (images, labels) in enumerate(train_loader):
+#     print(f"Batch {i + 1}:")
+#     print("Images shape:", images.shape)
+#     print("Labels shape:", labels.shape)
+#     print("Labels:", labels)
+
+# 实现三层函数
+print(train_loader)
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        #xw+b
+        self.fc1 = nn.Linear(28*28, 256)
+        self.fc2 = nn.Linear(256, 64)
+        self.fc3 = nn.Linear(64, 10)
+    def forward(self, x):
+        # x: [n,1,28,28]
+        # h1=relu(xw1+b)
+        x = F.relu(self.fc1(x))
+        #h2=relu(h1w2+b)
+        x = F.relu(self.fc2(x))
+        #h3=h2w3+b3
+        x = self.fc3(x)
+        return x
+def one_hot(labels, depth=10):
+    out = torch.zeros(labels.size(0), depth, device=labels.device)
+    idx=torch.LongTensor(labels).view(-1,1)
+    out.scatter_(1,idx,1)
+    return out
+def plot_images(images, labels,name):
+    fig=plt.figure()
+    for i in range(10):
+        plt.subplot(2,5,i+1)
+        plt.tight_layout()
+        plt.imshow(images[i][0]*0.3081+0.1307,cmap='gray')
+        plt.title('{}:{}'.format(name,labels[i].item()))
+        plt.xticks([])
+        plt.yticks([])
+    plt.show()
+net=Net()
+optimizer = optim.SGD(net.parameters(), lr=0.1,momentum=0.9)#返回[w1,b1,w2,b2,w3,b3]
+train_loss=[]
+for eopch in range(3):
+    for batch_index,(x,y) in enumerate(train_loader):
+        #x: [b,1,28,28]  y:[512]
+        #x--->[b,1*28*28]
+        x = x.view(x.size(0),28*28)
+        out=net(x)
+        y_onehot=one_hot(y)
+        loss=F.cross_entropy(out,y_onehot)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()#  w'=w-lr*grad  #
+        train_loss.append(loss.item())
+        # if batch_index%10==0:
+        #     print('Epoch:',eopch,'Batch:',batch_index,'Loss:',loss.item())
+# get optimal[w1,b1,w2,b2,w3,b3],then test
+total_correct=0
+for x,y in test_loader:
+    x = x.view(x.size(0),28*28) #x--->[b,1*28*28]
+    out = net(x)                #x-->三次函数  out:[b,10]
+    pred=out.argmax(dim=1)
+    correct=pred.eq(y).sum().float().item()
+    total_correct+=correct
+total_num=len(test_loader.dataset)
+accuracy=total_correct/total_num
+print('Accuracy:',accuracy)
+x,y=next(iter(test_loader))
+out=net(x.view(x.size(0),28*28))
+pred=out.argmax(dim=1)
+plot_images(x,pred,'test')
