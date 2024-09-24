@@ -1,0 +1,154 @@
+import torch
+import numpy as np
+#torch.tensor([])       具体数据
+#torch.Tensor()         纬度
+torch.set_default_dtype(torch.float64)
+a=torch.Tensor(1,2,3)
+b=torch.rand(3,3)           #from 0  to  1  [0,1)  3行 3列
+c=torch.randn(3,3)          # mean=0  方差Var=1     3行 3列
+d=torch.empty(3,3)          #  tensor 初始化占位
+e=np.ones((3,3))
+f=torch.from_numpy(e)                   #    numpy————>tensor
+g=torch.full([3,3],520)     #   所有值为520 3行 三列
+h=torch.arange(0,10,2,dtype=torch.float64)  # tensor[0.,2.,4.,6.,8.]起始值  终止值 间隔值
+j=torch.linspace(0,10,11)     # tensor 一共11个数 起始值，终止值，平均找11个数
+k=torch.logspace(0,10,11)     # tensor 10*x
+l=torch.eye(3,3)                            #生成对角tensor矩阵       只能到二维
+m=torch.ones_like(l)                        #   _like(x)  接收x.shape，生成纬度相同tensor矩阵
+o=torch.randperm(10)                        #  shuffle 打乱
+print(a.shape)
+print(a.size())
+print('b',b)
+print('c',c)
+print('d',d)
+print('f',f)
+print('g',g)
+print('h',h)
+print('j',j)
+print('k',k)
+print('l',l)
+print('o',o)
+
+print('*'*80)
+###   x与y 对应打乱    比如将人的排序打乱，对应成绩跟着变换      ###
+a=torch.rand(5,3)  #  人  成绩
+b=torch.rand(5,2)  #  人  成绩
+idx=torch.randperm(a.size(0))
+print(a)
+print(b)
+print(idx)
+print(a[idx])
+print(b[idx])
+
+###########     纬度变换    #############################
+a=torch.rand(4,3,28,28)
+b=a.view(4*3,28,28)     #必须满足  a(b*c*h*w)=a'(b'*h*w)
+# Squeeze 减小纬度  unsequeeze 纬度展开
+a=torch.rand(4,3,28,28)
+print('a.shape',a.shape)
+a.unsqueeze_(0)                 #  id 索引加入一个纬度
+print('a.shape',a.shape)        #a.shape torch.Size([4, 3, 28, 28])--------a.shape torch.Size([1, 4, 3, 28, 28])
+a.squeeze_(0)                   #  id 索引删去一个纬度
+c=torch.rand(1,32,1,1)
+c=c.expand(4,32,28,28)          # expend 只扩张维度，不写入数据
+print('c',c.shape)
+c=torch.rand(1,32,1,1)
+                                # c=c.expand_as(a)
+c=c.repeat(4,1,28,28)           # repeat 写入的重复的次数，会将原来纬度的数据进行倍数复制扩张
+print('c',c.shape)
+d=torch.rand(3,4)
+d=d.t()                         # 矩阵的转置，.t()只适用于一维和二维的数据
+a=torch.rand(4,3,28,28)
+a=a.transpose(1,3)   # 纬度交换     [b,c,h,w]--->[b,w,h,c]
+e=torch.rand(4,3,28,32)
+e=e.permute(0,2,3,1)            # 按照 id索引值进行纬度交换
+##  transpose带来的数据混淆问题
+a0=torch.rand(4,3,28,28)
+a1=a0.transpose(1,3).contiguous().view(4,3*28*28).view(4,3,28,28)         #[b,c,h,w]--->[b,w,h,c]  a1 中的 3,28,28 是按照 w,h,c顺序拆分的，与源数据不同，导致信息丢失
+a2=a0.transpose(1,3).contiguous().view(4,3*28*28).view(4,28,28,3).transpose(1,3)    # contiguous 是使数据连续，避免数据类型不同而产生错误
+print('a0=a1?',torch.equal(a0,a1),'a0=a2?',torch.equal(a0,a2))
+# broadcasting 规则
+'''
+a=torch.Tensor(4,3,14,14),b=torch.Tensor(14)
+a+b   此时broadcast将会把   b[14]--->b[1,1,1,14]     b中第一二三纬度数据是占位
+'''
+
+
+
+###########     索引与切片    #############################
+a=torch.rand(4,3,28,28)
+print(a[0].shape)               #torch.Size([3, 28, 28])
+print(a[0][0].shape)            #torch.Size([28, 28])
+print(a[0][0][1][2])            #tensor(0.3779)
+print(a[0:2].shape)                  # 索引第一个通道 第0个和第1个         torch.Size([2, 3, 28, 28])
+print(a[0:2,0:2].shape)              # 索引第一个通道[0,2),第二个通道[0,3) torch.Size([2, 3, 28, 28])
+print(a[:,:,0:28:2,0:28:2].shape)    # 索引三四通道，每隔两个采样一次       torch.Size([4, 3, 14, 14])
+print(a.index_select(0,torch.tensor([0,2])).shape)   # 索引第一个纬度，索引号为0,2 也就是第一张和第3张图片         torch.Size([2, 3, 28, 28])
+print(a[0,...].shape)                # 索引第一个纬度，第0个和所有其他维度的值 torch.Size([3, 28, 28])
+x=torch.randn(3,4)
+x=x.ge(0.5)     #大于0.5返回Ture,反之则为False
+x=torch.tensor(x, dtype=torch.float32)
+'''
+使用torch.tensor函数将布尔值张量转换为浮点数张量，并指定数据类型为torch.float32。
+使用torch.round函数将浮点数张量四舍五入为最接近的整数，得到一个包含0和1的整数张量
+'''
+x=torch.round(x)
+print(x)
+
+
+###########     合并与分割    #############################
+a=torch.rand(4,3,14,28)               #cat 拼接
+b=torch.rand(4,3,14,28)
+c=torch.cat((a,b),dim=0)
+d=torch.cat((a,b),dim=2)        # cat 拼接  torch.Size([4, 3, 28, 28])
+print(c.shape)
+print(d.shape)
+
+e=torch.stack([a,b],dim=2)      #  stack 拼接 torch.Size([4, 3, 2, 14, 28])
+print(e.shape)
+
+aa,bb=e.split(1,2)        # split 拆分  torch.Size([4, 3, 1, 14, 28]) torch.Size([4, 3, 1, 14, 28])
+cc,dd=e.split([1,1],2)    # split 拆分  将第三维度按照 1 1的批次拆分
+ee,ff=e.chunk(2,2)         # chunk 拆分  将第三维度均等拆分成2个
+print(aa.shape,bb.shape)
+
+###########     基本运算    #############################
+'''
+torch.add(a,b)              也可以用 +-*/
+torch.mul(a,b)
+torch.sub(a,b)
+torch.div(a,b)
+torch.eq(a,b)           返回 0 ，1
+torch.equal(a,b)        返回 Ture 或 False
+torch.matmul(a,b)       # 矩阵的相乘  等价于a@b
+a,pow(2)                a**2  矩阵的平方
+a.sqrt()                平方根
+a.rsqrt()               平方根，然后取倒数
+torch.exp(a)            对矩阵a进行e次方运算
+torch.log(a)            默认以e为底数
+a.floor()  a.ceil()  a.round()      向下取整， 向上取整，四舍五入
+a.trunc()  a.farc()                 拆分出整数部分  拆分出小数部分
+a.max() a.min() a.median() 
+
+※※  a.clamp()               #特殊裁剪
+a.clamp(min=10)               # 最小为10，a中比10小的都取为10
+a.clamp(min=0,max=10)         #  比10大的取10 ，比0小的取0
+'''
+###########     统计属性    #############################
+'''
+泛数  a.norm(2,3)   对第三维度做2泛数
+a.max() a.min() a.median() a.mean() a.pord()  #pord 是累乘
+a.argmax(dim=1) a.argmin()  返回索引值
+a.max(dim=1)                返回第二维度最大值的张量，和索引值
+
+a=torch.randn(4,10)
+print(a.max(dim=1)) #   values=tensor([1.7414, 1.9080, 1.0417, 1.5539]),    indices=tensor([6, 1, 2, 5]))
+print(a.max(dim=1,keepdim=True))         #  返回2个(4,1)tensor，保持纬度和a相同
+print(a.argmax(dim=1,keepdim=True))     #  返回1个(4,1)tensor，保持纬度和a相同
+
+a.topk(3,dim=1)                         #  返回三个最    大   的值和对应的索引值
+a.topk(3,dim=1,largest=False)           #  返回三个最    小   的值和对应的索引值
+a.kthvalue(3,dim=1)                     #  返回第二维度  第三  小  的值   和    对应索引值
+> >= < <= != ==    如果成立返回1，不成立返回0  
+
+'''
