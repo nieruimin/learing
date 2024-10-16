@@ -1,0 +1,111 @@
+import numpy as np
+import torch
+from torchvision import datasets, transforms
+from torch.utils.data import Dataset, DataLoader
+from torch import nn,optim
+from torch.nn import functional as F
+class Lenet5(nn.Module):
+    '''
+    for cifar 10 dataset
+    '''
+    def __init__(self):
+        super(Lenet5, self).__init__()
+
+        self.conv_unit=nn.Sequential(
+            # x:[b,3,32,32]==>[b,6,]
+            nn.Conv2d(3, 6, 5, padding=0,stride=1),#[b,6, , ]
+            nn.AvgPool2d(2,2,padding=0),
+            #
+            nn.Conv2d(6, 16, 5, padding=0,stride=1),
+            nn.AvgPool2d(2,2,padding=0),
+            #
+        )
+        #flatten
+        #full connection_unit
+        self.fc_unit=nn.Sequential(
+            nn.Linear(16*5*5, 120),
+            nn.ReLU(),
+            nn.Linear(120, 84),
+            nn.ReLU(),
+            nn.Linear(84, 10)
+        )
+        tmp=torch.randn(2,3,32,32)
+        #out=self.conv_unit(tmp)        #torch.Size([b, 16, 5, 5])
+        #print(out.size())
+
+        # use crossentropy loss
+        self.criterion=nn.CrossEntropyLoss()
+    def forward(self,x):
+        batchsize=x.size()[0]
+        #[b,16,32,32]==>[b,16,5,5]
+        x=self.conv_unit(x)
+        #[b,16,5,5]==>[b,16*5*5]
+        x=x.view(batchsize,16*5*5)
+        #[b,16*5*5]==>[b,10]
+        logits=self.fc_unit(x)
+        #[b,10]
+        #pred=F.softmax(logits,dim=1)       #CrossEntropyLoss中已经有softmax操作，所以注释掉
+        #loss=self.criterion(logits,y)
+        return logits
+def main():
+    Batch_size = 32
+    cifar_train=datasets.CIFAR10(root='./data', train=True,download=True,transform=transforms.Compose([
+        transforms.Resize((32,32)),
+        transforms.ToTensor()
+    ]))
+    cifar_train=DataLoader(cifar_train, batch_size=Batch_size, shuffle=True)
+    cifar_test=datasets.CIFAR10(root='./data', train=False,download=True,transform=transforms.Compose([
+        transforms.Resize((32,32)),
+        transforms.ToTensor()
+    ]))
+    cifar_test=DataLoader(cifar_test, batch_size=Batch_size, shuffle=True)
+
+    x,label=iter(cifar_train).__next__()
+    print('x:',x.shape,'label:',label.shape)
+
+    device=torch.device('cuda')
+    model = Lenet5().to(device)
+    criterion = nn.CrossEntropyLoss().to(device)
+    optimizer =optim.Adam(model.parameters(),lr=0.001)
+    print(model)
+    loss=[]
+    for epoch in range(1000):
+        model.train()
+        for batch_idx, (x,label) in enumerate(cifar_train):
+            #x[b,3,32,32]  label:b
+            x,label=x.to(device),label.to(device)
+
+            logits=model(x)
+            #logits:[b,10] label:[b] loss:tensor scalar
+            loss=criterion(logits,label)
+
+            #backporp
+            optimizer.zero_grad()   #梯度清0
+            loss.backward()         #梯度计算
+            optimizer.step()        #更新梯度到weight中
+
+        #
+        print(loss.item())
+
+
+        with torch.no_grad():       #test 不需要梯度，不需要back propagate
+            model.eval()
+            #test
+            total_correct=0
+            total_num=0
+            for x,label in cifar_test:
+                x,label=x.to(device),label.to(device)
+
+
+                #[b,10]
+                logits=model(x)
+                pred=logits.argmax(dim=1)
+                total_correct+=torch.eq(pred,label).float().sum().item()
+                total_num+=x.size(0)
+            acc=total_correct/total_num
+            print('acc',epoch,acc)
+
+
+
+if __name__=='__main__':
+    main()
